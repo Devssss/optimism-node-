@@ -47,9 +47,14 @@ export default function Home() {
   const [isReady, setIsReady] = useState(false);
   const [blockHeight, setBlockHeight] = useState(114290512);
   const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>(['node-01']);
+  const [selectedNodeModalId, setSelectedNodeModalId] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<NodeAlert[]>([]);
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'custom'>('24h');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
+
+  const selectedNodeForModal = useMemo(() => 
+    nodes.find(n => n.id === selectedNodeModalId),
+  [selectedNodeModalId, nodes]);
 
   const toggleNodeExpansion = (nodeId: string) => {
     setExpandedNodeIds(prev => 
@@ -430,7 +435,12 @@ export default function Home() {
                         node.status === 'syncing' ? 'bg-yellow-500 animate-pulse shadow-[0_0_8px_rgba(234,179,8,0.4)]' : 
                         'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
                       }`} />
-                      <span className="text-[10px] font-black truncate max-w-[80px]">{node.name}</span>
+                      <span 
+                        onClick={() => setSelectedNodeModalId(node.id)}
+                        className="text-[10px] font-black truncate max-w-[80px] hover:text-[#FF0420] cursor-pointer transition-colors"
+                      >
+                        {node.name}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase ${
@@ -668,6 +678,101 @@ export default function Home() {
            </div>
         </footer>
       </div>
+
+      {/* Node Detail Modal */}
+      <AnimatePresence>
+        {selectedNodeModalId && selectedNodeForModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedNodeModalId(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-[#0a0a0a] border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-6 flex flex-col gap-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${
+                      selectedNodeForModal.status === 'synced' ? 'bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.6)]' : 
+                      selectedNodeForModal.status === 'syncing' ? 'bg-yellow-500 shadow-[0_0_12px_rgba(234,179,8,0.6)]' : 
+                      'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.6)]'
+                    }`} />
+                    <div>
+                      <h2 className="text-xl font-black uppercase text-white">{selectedNodeForModal.name}</h2>
+                      <p className="text-[10px] text-zinc-500 font-mono flex items-center gap-2">
+                        {selectedNodeForModal.id} • STATUS: <span className="text-[#FF0420]">{selectedNodeForModal.status.toUpperCase()}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedNodeModalId(null)}
+                    className="p-2 rounded-full hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {[
+                    { label: 'CPU LOAD', value: `${Math.round(selectedNodeForModal.cpu)}%`, icon: Cpu, color: 'text-blue-500' },
+                    { label: 'MEMORY', value: `${selectedNodeForModal.memory.toFixed(1)} GB`, icon: Database, color: 'text-purple-500' },
+                    { label: 'LATENCY', value: selectedNodeForModal.latency, icon: Activity, color: 'text-yellow-500' },
+                    { label: 'NETWORK I/O', value: `${Math.round(selectedNodeForModal.networkIO)} MB/s`, icon: Globe, color: 'text-green-500' },
+                    { label: 'DISK I/O', value: `${selectedNodeForModal.diskIO} MB/s`, icon: HardDrive, color: 'text-amber-500' },
+                    { label: 'BLOCK HT', value: blockHeight.toLocaleString(), icon: Layers, color: 'text-zinc-500' },
+                  ].map((stat, i) => (
+                    <div key={i} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex flex-col gap-2">
+                      <div className="flex items-center gap-2 text-zinc-500">
+                        <stat.icon size={12} />
+                        <span className="text-[8px] font-black uppercase tracking-widest">{stat.label}</span>
+                      </div>
+                      <p className={`text-xl font-mono font-black ${stat.color}`}>{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50">
+                  <div className="flex items-center justify-between mb-3 text-zinc-500">
+                     <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-widest">
+                       <Zap size={12} />
+                       <span>Real-time Health Spectrum</span>
+                     </div>
+                     <span className="text-[8px] font-mono">STABLE: 99.8%</span>
+                  </div>
+                  <div className="flex gap-1 h-8">
+                     {Array.from({ length: 40 }).map((_, i) => (
+                       <div 
+                        key={i} 
+                        className={`flex-1 rounded-sm ${
+                          i > 35 ? 'bg-red-500/20' : 
+                          i > 30 ? 'bg-orange-500/40' : 
+                          'bg-green-500/40'
+                        }`} 
+                       />
+                     ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button 
+                    onClick={() => setSelectedNodeModalId(null)}
+                    className="px-6 py-2 bg-[#FF0420] text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-[#D7031B] transition-all shadow-[0_0_15px_rgba(255,4,32,0.3)]"
+                  >
+                    Close Session
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
