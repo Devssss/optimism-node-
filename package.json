@@ -9,27 +9,25 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@coinbase/onchainkit": "latest",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "next": "15.0.3",
     "@farcaster/miniapp-sdk": "latest",
-    "@tanstack/react-query": "^5.0.0",
-    "lucide-react": "latest",
     "motion": "latest",
-    "next": "15.1.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "recharts": "^2.10.0",
-    "viem": "^2.21.0",
-    "wagmi": "^2.12.0"
+    "lucide-react": "latest",
+    "recharts": "latest",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "autoprefixer": "^10.0.1",
-    "eslint": "^9",
-    "eslint-config-next": "15.1.0",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "typescript": "^5.6.3",
+    "@types/node": "^20.17.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "latest",
+    "@tailwindcss/postcss": "latest",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "15.0.3"
   }
 }

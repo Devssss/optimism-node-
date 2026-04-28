@@ -1,20 +1,18 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
-:root {
-  --background: #050505;
-  --foreground: #ffffff;
+@theme {
+  --color-brand: #FF0420;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: #050505;
+  color: white;
 }
 
 .bento-card {
-  @apply relative overflow-hidden transition-all duration-300;
+  @apply bg-[#111111] border-[#222222] transition-all duration-300;
 }
 
 .shadow-text {
-  text-shadow: 0 0 15px rgba(255, 4, 32, 0.4);
+  text-shadow: 0 0 20px rgba(255, 4, 32, 0.4);
 }
