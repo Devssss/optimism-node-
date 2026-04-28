@@ -311,26 +311,107 @@ export default function Home() {
           {/* Nodes List */}
           <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4">
             {nodes.map(node => (
-              <div key={node.id} className="bento-card p-4 rounded-xl border border-zinc-800 hover:border-[#FF0420] group">
+              <div key={node.id} className="bento-card p-4 rounded-xl border border-zinc-800 hover:border-[#FF0420] transition-all duration-300">
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2">
-                    <span onClick={() => setSelectedNodeModalId(node.id)} className="text-xs font-black cursor-pointer hover:text-[#FF0420] transition-colors">{node.name}</span>
+                    <span 
+                      onClick={() => setSelectedNodeModalId(node.id)} 
+                      className="text-xs font-black cursor-pointer hover:text-[#FF0420] transition-colors"
+                    >
+                      {node.name}
+                    </span>
                     <div className="flex items-center gap-1">
                       <div className="w-8 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#FF0420]" style={{ width: `${calculateHealthScore(node)}%` }} />
+                        <div 
+                          className={`h-full transition-all duration-500 ${
+                            calculateHealthScore(node) > 80 ? 'bg-green-500' : 
+                            calculateHealthScore(node) > 50 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${calculateHealthScore(node)}%` }} 
+                        />
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => triggerPerNodePing(node.id)} className="text-zinc-500 hover:text-white"><Zap size={12} /></button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => triggerPerNodePing(node.id)} 
+                      className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-[#FF0420] transition-colors"
+                      title="Quick Ping"
+                    >
+                      <Zap size={12} />
+                    </button>
+                    <button 
+                      onClick={() => toggleNodeExpansion(node.id)}
+                      className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
+                    >
+                      {expandedNodeIds.includes(node.id) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[10px]">
-                  <div className="flex items-center gap-1.5"><Cpu size={10} className="text-zinc-500"/><span className="font-mono">{node.cpu.toFixed(1)}%</span></div>
-                  <div className="flex items-center gap-1.5"><Globe size={10} className="text-zinc-500"/><span className="font-mono">{node.latency}</span></div>
+
+                <div className="grid grid-cols-2 gap-2 text-[10px] mb-2">
+                  <div className="flex items-center gap-1.5 p-1.5 rounded bg-zinc-900/50">
+                    <Cpu size={10} className="text-zinc-500"/>
+                    <span className="font-mono font-bold">{node.cpu.toFixed(1)}%</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 p-1.5 rounded bg-zinc-900/50">
+                    <Globe size={10} className="text-zinc-500"/>
+                    <span className="font-mono font-bold">{node.latency}</span>
+                  </div>
                 </div>
+
+                <AnimatePresence>
+                  {expandedNodeIds.includes(node.id) && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="grid grid-cols-2 gap-2 text-[10px] pt-2 border-t border-zinc-800/50">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[7px] font-black uppercase text-zinc-500 tracking-widest">Memory</span>
+                          <div className="flex items-center gap-1.5 font-mono">
+                            <Database size={10} className="text-purple-500" />
+                            <span>{node.memory.toFixed(1)} GB</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[7px] font-black uppercase text-zinc-500 tracking-widest">Net I/O</span>
+                          <div className="flex items-center gap-1.5 font-mono">
+                            <Activity size={10} className="text-green-500" />
+                            <span>{node.networkIO} MB/s</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[7px] font-black uppercase text-zinc-500 tracking-widest">Disk I/O</span>
+                          <div className="flex items-center gap-1.5 font-mono">
+                            <HardDrive size={10} className="text-amber-500" />
+                            <span>{node.diskIO} MB/s</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[7px] font-black uppercase text-zinc-500 tracking-widest">Health</span>
+                          <div className="flex items-center gap-1.5 font-mono">
+                            <TrendingUp size={10} className="text-blue-500" />
+                            <span>{calculateHealthScore(node)}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {perNodePings[node.id] && (
                   <div className="mt-2 pt-2 border-t border-zinc-800 flex justify-between items-center text-[8px] font-black uppercase">
-                    <span className="text-zinc-500">Last Ping</span>
-                    <span className="text-green-500">{perNodePings[node.id].status === 'pinging' ? '...' : `${perNodePings[node.id].rtt}ms`}</span>
+                    <span className="text-zinc-500">Last Ping Test</span>
+                    <span className={`font-mono ${
+                      perNodePings[node.id].status === 'pinging' ? 'text-[#FF0420] animate-pulse' : 
+                      perNodePings[node.id].status === 'success' ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                      {perNodePings[node.id].status === 'pinging' ? '...' : 
+                       perNodePings[node.id].status === 'success' ? `${perNodePings[node.id].rtt}ms` : 'FAIL'}
+                    </span>
                   </div>
                 )}
               </div>
