@@ -22,7 +22,8 @@ import {
   X,
   Info,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Settings
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -49,6 +50,12 @@ export default function Home() {
   const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>(['node-01']);
   const [selectedNodeModalId, setSelectedNodeModalId] = useState<string | null>(null);
   const [refreshInterval, setRefreshInterval] = useState<number>(5000);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [thresholds, setThresholds] = useState({
+    cpu: 80,
+    memory: 85,
+    latency: 150
+  });
   const [alerts, setAlerts] = useState<NodeAlert[]>([]);
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'custom'>('24h');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
@@ -190,25 +197,42 @@ export default function Home() {
         setNodes(prevNodes => prevNodes.map(node => {
           let newStatus = node.status;
           let newLatency = node.latency;
+          
           const roll = Math.random();
-          if (roll < 0.05) {
+          // Simulate status shifts occasionally
+          if (roll < 0.02) {
             newStatus = 'error';
-            newLatency = 'timeout';
-            addAlert(node, 'error', 'Critical: Node entered ERROR state');
-          } else if (roll < 0.15) {
+            addAlert(node, 'error', 'Critical: Node connection lost');
+          } else if (roll < 0.08) {
             newStatus = 'syncing';
-            newLatency = `${Math.floor(Math.random() * 500 + 100)}ms`;
-            addAlert(node, 'high-latency', `High Latency Detected: ${newLatency}`);
-          } else {
+          } else if (roll > 0.95) {
             newStatus = 'synced';
-            newLatency = `${Math.floor(Math.random() * 20 + 10)}ms`;
           }
+
+          const nextCpu = Math.min(100, Math.max(0, node.cpu + (Math.random() * 15 - 7)));
+          const nextNetIO = Math.max(0, node.networkIO + (Math.random() * 200 - 100));
+          const baseLat = parseInt(node.latency) || 20;
+          const nextLatVal = Math.max(5, baseLat + Math.floor(Math.random() * 20 - 10));
+          const nextLat = `${nextLatVal}ms`;
+          const memPercent = (node.memory / 64) * 100;
+
+          // Threshold-based alerting
+          if (nextCpu > thresholds.cpu) {
+            addAlert(node, 'warning', `High CPU Load: ${nextCpu.toFixed(1)}%`);
+          }
+          if (nextLatVal > thresholds.latency) {
+            addAlert(node, 'high-latency', `High Latency: ${nextLatVal}ms`);
+          }
+          if (memPercent > thresholds.memory) {
+            addAlert(node, 'warning', `High Memory Usage: ${memPercent.toFixed(1)}%`);
+          }
+
           return {
             ...node,
             status: newStatus,
-            latency: newLatency,
-            cpu: Math.min(100, Math.max(0, node.cpu + (Math.random() * 10 - 5))),
-            networkIO: Math.max(0, node.networkIO + (Math.random() * 100 - 50))
+            latency: nextLat,
+            cpu: nextCpu,
+            networkIO: nextNetIO
           };
         }));
         const now = new Date();
@@ -258,6 +282,13 @@ export default function Home() {
           </div>
           
           <div className="flex items-center gap-6">
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 rounded-lg bg-zinc-900/50 border border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-700 transition-all"
+              title="Alert Settings"
+            >
+              <Settings size={16} />
+            </button>
             <div className="flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 rounded-lg p-1.5">
               <Clock size={12} className="text-zinc-500" />
               <select value={refreshInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))} className="bg-transparent text-[10px] font-black uppercase text-zinc-400 focus:outline-none cursor-pointer">
@@ -419,6 +450,74 @@ export default function Home() {
           </div>
         </main>
       </div>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSettingsOpen(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+            <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.95 }} className="relative w-full max-w-md bg-[#0a0a0a] border border-zinc-800 rounded-2xl p-6 shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xl font-black uppercase text-white">Alert Thresholds</h2>
+                  <p className="text-[10px] text-zinc-500 font-mono">Configure custom trigger points for node alerts</p>
+                </div>
+                <button onClick={() => setIsSettingsOpen(false)} className="text-zinc-500 hover:text-white"><X size={20} /></button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">CPU Usage Limit</label>
+                    <span className="text-xs font-mono font-bold text-[#FF0420]">{thresholds.cpu}%</span>
+                  </div>
+                  <input 
+                    type="range" min="10" max="99" step="1"
+                    value={thresholds.cpu}
+                    onChange={(e) => setThresholds({...thresholds, cpu: Number(e.target.value)})}
+                    className="w-full h-1.5 bg-zinc-900 rounded-lg appearance-none cursor-pointer accent-[#FF0420]"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Memory Usage Limit</label>
+                    <span className="text-xs font-mono font-bold text-[#FF0420]">{thresholds.memory}%</span>
+                  </div>
+                  <input 
+                    type="range" min="10" max="99" step="1"
+                    value={thresholds.memory}
+                    onChange={(e) => setThresholds({...thresholds, memory: Number(e.target.value)})}
+                    className="w-full h-1.5 bg-zinc-900 rounded-lg appearance-none cursor-pointer accent-[#FF0420]"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Latency Limit (RTT)</label>
+                    <span className="text-xs font-mono font-bold text-[#FF0420]">{thresholds.latency}ms</span>
+                  </div>
+                  <input 
+                    type="range" min="20" max="1000" step="10"
+                    value={thresholds.latency}
+                    onChange={(e) => setThresholds({...thresholds, latency: Number(e.target.value)})}
+                    className="w-full h-1.5 bg-zinc-900 rounded-lg appearance-none cursor-pointer accent-[#FF0420]"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-8 flex gap-3">
+                <button 
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="flex-1 py-3 bg-zinc-900 border border-zinc-800 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:border-zinc-700 transition-all"
+                >
+                  Save Config
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modal */}
       <AnimatePresence>
