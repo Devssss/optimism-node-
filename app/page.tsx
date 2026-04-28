@@ -19,6 +19,11 @@ import {
 export default function Home() {
   const [isReady, setIsReady] = useState(false);
   const [blockHeight, setBlockHeight] = useState(114290512);
+  const [nodes, setNodes] = useState([
+    { id: 'node-01', name: 'Optimism Mainnet 01', status: 'synced', latency: '12ms' },
+    { id: 'node-02', name: 'Optimism Mainnet 02', status: 'syncing', latency: '45ms' },
+    { id: 'node-03', name: 'Optimism Backup', status: 'error', latency: 'timeout' }
+  ]);
   const [logs, setLogs] = useState([
     { type: 'INFO', time: '12:04:22', msg: 'Advancing L2 head to block #114290512' },
     { type: 'INFO', time: '12:04:20', msg: 'Derivation layer: processing L1 origin #18492021' },
@@ -258,20 +263,43 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Storage */}
+          {/* Cluster Nodes Status */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col justify-between"
+            className="md:col-span-1 bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col"
           >
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Storage</p>
-              <HardDrive size={14} className="text-zinc-600" />
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Cluster Health</p>
+              <Activity size={14} className="text-zinc-600" />
             </div>
-            <div>
-              <h3 className="text-2xl md:text-3xl font-bold font-mono">1.2 <span className="text-xs opacity-50">TB</span></h3>
-              <p className="text-[9px] text-zinc-500 mt-1 font-medium">78% utilized • ancient data pruned</p>
+            <div className="space-y-3">
+              {nodes.map((node) => (
+                <div key={node.id} className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${
+                        node.status === 'synced' ? 'bg-green-500' : 
+                        node.status === 'syncing' ? 'bg-yellow-500 animate-pulse' : 
+                        'bg-red-500'
+                      }`} />
+                      <span className="text-[10px] font-bold truncate max-w-[80px]">{node.name}</span>
+                    </div>
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                      node.status === 'synced' ? 'bg-green-500/10 text-green-500' : 
+                      node.status === 'syncing' ? 'bg-yellow-500/10 text-yellow-500' : 
+                      'bg-red-500/10 text-red-500'
+                    }`}>
+                      {node.status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-[8px] font-mono text-zinc-500 px-4">
+                    <span>Latency</span>
+                    <span className={node.status === 'error' ? 'text-red-500' : ''}>{node.latency}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </motion.div>
 
