@@ -74,6 +74,7 @@ export default function Home() {
     { 
       id: 'node-01', 
       name: 'Optimism Mainnet 01', 
+      nickname: 'Primary RPC',
       status: 'synced', 
       latency: '12ms',
       latencyHistory: [12, 14, 11, 13, 12, 15, 12, 13, 11, 12],
@@ -85,6 +86,7 @@ export default function Home() {
     { 
       id: 'node-02', 
       name: 'Optimism Mainnet 02', 
+      nickname: '',
       status: 'synced', 
       latency: '45ms',
       latencyHistory: [40, 42, 45, 48, 50, 45, 47, 44, 45, 46],
@@ -96,6 +98,7 @@ export default function Home() {
     { 
       id: 'node-03', 
       name: 'Optimism Backup', 
+      nickname: 'DR Node',
       status: 'synced', 
       latency: '34ms',
       latencyHistory: [30, 32, 35, 34, 33, 36, 34, 35, 34, 34],
@@ -505,12 +508,19 @@ export default function Home() {
                       {node.status === 'syncing' && <Clock size={12} className="text-yellow-500" />}
                       {node.status === 'error' && <AlertTriangle size={12} className="text-[#FF0420]" />}
                     </div>
-                    <span 
-                      onClick={() => setSelectedNodeModalId(node.id)} 
-                      className="text-xs font-black cursor-pointer hover:text-[#FF0420] transition-colors"
-                    >
-                      {node.name}
-                    </span>
+                    <div className="flex flex-col">
+                      <span 
+                        onClick={() => setSelectedNodeModalId(node.id)} 
+                        className="text-xs font-black cursor-pointer hover:text-[#FF0420] transition-colors leading-tight"
+                      >
+                        {node.name}
+                      </span>
+                      {node.nickname && (
+                        <span className="text-[9px] text-[#FF0420] font-mono uppercase tracking-tighter leading-none mt-0.5">
+                          "{node.nickname}"
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1">
                       <div className="w-8 h-1 bg-zinc-800 rounded-full overflow-hidden">
                         <div 
@@ -741,10 +751,32 @@ export default function Home() {
                     {selectedNodeForModal.status === 'syncing' && <Clock size={20} className="text-yellow-500" />}
                     {selectedNodeForModal.status === 'error' && <AlertTriangle size={20} className="text-[#FF0420]" />}
                   </div>
-                  <h2 className="text-xl font-black uppercase">{selectedNodeForModal.name}</h2>
+                  <div className="flex flex-col">
+                    <h2 className="text-xl font-black uppercase tracking-tight">{selectedNodeForModal.name}</h2>
+                    {selectedNodeForModal.nickname && (
+                      <p className="text-[10px] text-[#FF0420] font-mono uppercase tracking-widest mt-0.5">
+                        {selectedNodeForModal.nickname}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <button onClick={() => setSelectedNodeModalId(null)} className="text-zinc-500 hover:text-white"><X size={20} /></button>
               </div>
+
+              <div className="mb-6">
+                <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-2 block">Custom Nickname</label>
+                <input 
+                  type="text" 
+                  value={selectedNodeForModal.nickname || ''} 
+                  onChange={(e) => {
+                    const newNickname = e.target.value;
+                    setNodes(prev => prev.map(n => n.id === selectedNodeModalId ? { ...n, nickname: newNickname } : n));
+                  }}
+                  placeholder="E.G., STAKING-PROD-01"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs font-bold text-white focus:outline-none focus:border-[#FF0420] transition-all placeholder:text-zinc-700"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-zinc-900 rounded-xl border border-zinc-800 text-center">
                   <p className="text-[10px] text-zinc-500 uppercase mb-1">CPU Load</p>
