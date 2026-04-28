@@ -20,7 +20,9 @@ import {
   Bell,
   AlertTriangle,
   X,
-  Info
+  Info,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -44,10 +46,18 @@ interface NodeAlert {
 export default function Home() {
   const [isReady, setIsReady] = useState(false);
   const [blockHeight, setBlockHeight] = useState(114290512);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('node-01');
+  const [expandedNodeIds, setExpandedNodeIds] = useState<string[]>(['node-01']);
   const [alerts, setAlerts] = useState<NodeAlert[]>([]);
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'custom'>('24h');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
+
+  const toggleNodeExpansion = (nodeId: string) => {
+    setExpandedNodeIds(prev => 
+      prev.includes(nodeId) 
+        ? prev.filter(id => id !== nodeId) 
+        : [...prev, nodeId]
+    );
+  };
   
   const historyData = useMemo(() => {
     const baseData = [
@@ -409,10 +419,9 @@ export default function Home() {
               {nodes.map((node) => (
                 <div 
                   key={node.id} 
-                  className={`flex flex-col gap-2 p-2 rounded-lg transition-colors cursor-pointer border ${
-                    selectedNodeId === node.id ? 'bg-[#1a1a1a] border-zinc-700 shadow-inner' : 'hover:bg-[#161616] border-transparent'
+                  className={`flex flex-col gap-2 p-2 rounded-lg transition-colors border ${
+                    expandedNodeIds.includes(node.id) ? 'bg-[#1a1a1a] border-zinc-700 shadow-inner' : 'hover:bg-[#161616] border-transparent'
                   }`}
-                  onClick={() => setSelectedNodeId(selectedNodeId === node.id ? null : node.id)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -423,17 +432,28 @@ export default function Home() {
                       }`} />
                       <span className="text-[10px] font-black truncate max-w-[80px]">{node.name}</span>
                     </div>
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase ${
-                      node.status === 'synced' ? 'bg-green-500/10 text-green-500' : 
-                      node.status === 'syncing' ? 'bg-yellow-500/10 text-yellow-500' : 
-                      'bg-red-500/10 text-red-500'
-                    }`}>
-                      {node.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase ${
+                        node.status === 'synced' ? 'bg-green-500/10 text-green-500' : 
+                        node.status === 'syncing' ? 'bg-yellow-500/10 text-yellow-500' : 
+                        'bg-red-500/10 text-red-500'
+                      }`}>
+                        {node.status}
+                      </span>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleNodeExpansion(node.id);
+                        }}
+                        className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
+                      >
+                        {expandedNodeIds.includes(node.id) ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      </button>
+                    </div>
                   </div>
                   
                   <AnimatePresence>
-                    {selectedNodeId === node.id && (
+                    {expandedNodeIds.includes(node.id) && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
@@ -441,7 +461,7 @@ export default function Home() {
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800 mt-2">
+                        <div className="grid grid-cols-1 gap-3 pt-3 border-t border-zinc-800 mt-2">
                           <div className="flex flex-col gap-1">
                             <span className="text-[7px] text-zinc-500 uppercase font-black">CPU Usage</span>
                             <div className="flex items-center gap-2">
@@ -455,17 +475,47 @@ export default function Home() {
                               <span className="text-[8px] font-mono whitespace-nowrap">{Math.round(node.cpu)}%</span>
                             </div>
                           </div>
+                          
                           <div className="flex flex-col gap-1">
-                            <span className="text-[7px] text-zinc-500 uppercase font-black">Network I/O</span>
+                            <span className="text-[7px] text-zinc-500 uppercase font-black">Memory Allocation</span>
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
                                 <motion.div 
                                   initial={{ width: 0 }}
-                                  animate={{ width: `${Math.min((node.networkIO/1000)*100, 100)}%` }}
-                                  className="h-full bg-green-500"
+                                  animate={{ width: `${Math.min((node.memory/64)*100, 100)}%` }}
+                                  className="h-full bg-purple-500"
                                 />
                               </div>
-                              <span className="text-[8px] font-mono whitespace-nowrap">{Math.round(node.networkIO)} MB/s</span>
+                              <span className="text-[8px] font-mono whitespace-nowrap">{node.memory.toFixed(1)} GB</span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[7px] text-zinc-500 uppercase font-black">Network I/O</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min((node.networkIO/1000)*100, 100)}%` }}
+                                    className="h-full bg-green-500"
+                                  />
+                                </div>
+                                <span className="text-[8px] font-mono whitespace-nowrap">{Math.round(node.networkIO)} MB/s</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[7px] text-zinc-500 uppercase font-black">Disk I/O</span>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min((node.diskIO/500)*100, 100)}%` }}
+                                    className="h-full bg-amber-500"
+                                  />
+                                </div>
+                                <span className="text-[8px] font-mono whitespace-nowrap">{node.diskIO} MB/s</span>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -480,7 +530,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            {alerts.length > 0 && selectedNodeId === null && (
+            {alerts.length > 0 && expandedNodeIds.length === 0 && (
                <div className="mt-auto pt-4 text-center">
                   <p className="text-[8px] text-[#FF0420] animate-pulse font-black uppercase">Attention Required ({alerts.length})</p>
                </div>
