@@ -61,6 +61,7 @@ export default function Home() {
   const [alerts, setAlerts] = useState<NodeAlert[]>([]);
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'custom'>('24h');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
 
   // Global Ping Test State
   const [pingTarget, setPingTarget] = useState<string>('node-01');
@@ -207,6 +208,10 @@ export default function Home() {
   const toggleNodeExpansion = (nodeId: string) => {
     setExpandedNodeIds(prev => prev.includes(nodeId) ? prev.filter(id => id !== nodeId) : [...prev, nodeId]);
   };
+
+  useEffect(() => {
+    setNicknameError(null);
+  }, [selectedNodeModalId]);
 
   useEffect(() => {
     const init = async () => {
@@ -764,16 +769,44 @@ export default function Home() {
               </div>
 
               <div className="mb-6">
-                <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest mb-2 block">Custom Nickname</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-[10px] font-black uppercase text-zinc-500 tracking-widest block">Custom Nickname</label>
+                  {nicknameError && (
+                    <motion.span 
+                      initial={{ opacity: 0, x: -5 }} 
+                      animate={{ opacity: 1, x: 0 }} 
+                      className="text-[9px] font-bold text-[#FF0420] uppercase tracking-tighter"
+                    >
+                      {nicknameError}
+                    </motion.span>
+                  )}
+                </div>
                 <input 
                   type="text" 
                   value={selectedNodeForModal.nickname || ''} 
                   onChange={(e) => {
                     const newNickname = e.target.value;
+                    const specialCharRegex = /[^a-zA-Z0-9 ]/;
+                    const isDuplicate = nodes.some(n => 
+                      n.id !== selectedNodeModalId && 
+                      n.nickname?.trim().toLowerCase() === newNickname.trim().toLowerCase() && 
+                      newNickname.trim() !== ""
+                    );
+
+                    if (specialCharRegex.test(newNickname)) {
+                      setNicknameError("No special characters allowed");
+                    } else if (isDuplicate) {
+                      setNicknameError("Nickname must be unique");
+                    } else {
+                      setNicknameError(null);
+                    }
+                    
                     setNodes(prev => prev.map(n => n.id === selectedNodeModalId ? { ...n, nickname: newNickname } : n));
                   }}
                   placeholder="E.G., STAKING-PROD-01"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-3 text-xs font-bold text-white focus:outline-none focus:border-[#FF0420] transition-all placeholder:text-zinc-700"
+                  className={`w-full bg-zinc-900 border rounded-lg p-3 text-xs font-bold text-white focus:outline-none transition-all placeholder:text-zinc-700 ${
+                    nicknameError ? 'border-[#FF0420] shadow-[0_0_10px_rgba(255,4,32,0.1)]' : 'border-zinc-800 focus:border-[#FF0420]'
+                  }`}
                 />
               </div>
 
