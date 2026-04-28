@@ -115,15 +115,31 @@ export default function Home() {
   const triggerPing = async () => {
     setIsPinging(true);
     setPingResult({ rtt: 0, status: null });
+    
+    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1500));
-    const targetNode = nodes.find(n => n.id === pingTarget);
-    if (!targetNode || targetNode.status === 'error') {
-      setPingResult({ rtt: 0, status: 'fail' });
+    
+    const targetNode = nodes.find(n => n.id === pingTarget || n.name === pingTarget);
+    
+    if (targetNode) {
+      if (targetNode.status === 'error') {
+        setPingResult({ rtt: 0, status: 'fail' });
+      } else {
+        const baseLatency = parseInt(targetNode.latency);
+        const rtt = baseLatency + Math.floor(Math.random() * 15);
+        setPingResult({ rtt, status: 'success' });
+      }
     } else {
-      const baseLatency = parseInt(targetNode.latency);
-      const rtt = baseLatency + Math.floor(Math.random() * 15);
-      setPingResult({ rtt, status: 'success' });
+      // Simulate external ping
+      const isSuccess = Math.random() > 0.1; // 90% success for external
+      if (isSuccess) {
+        const rtt = Math.floor(Math.random() * 150 + 20); // 20-170ms for external
+        setPingResult({ rtt, status: 'success' });
+      } else {
+        setPingResult({ rtt: 0, status: 'fail' });
+      }
     }
+    
     setIsPinging(false);
   };
 
@@ -326,16 +342,42 @@ export default function Home() {
               <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Diagnostics</p>
               <Zap size={14} className="text-[#FF0420]" />
             </div>
-            <select value={pingTarget} onChange={(e) => setPingTarget(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-[10px] font-black text-white focus:outline-none focus:border-[#FF0420] appearance-none cursor-pointer mb-3">
-              {nodes.map(node => <option key={node.id} value={node.id}>{node.name}</option>)}
-            </select>
+            <div className="relative mb-3">
+              <input 
+                list="nodes-datalist"
+                value={pingTarget} 
+                onChange={(e) => setPingTarget(e.target.value)} 
+                placeholder="ID, NAME OR IP ADDRESS"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-[10px] font-black text-white focus:outline-none focus:border-[#FF0420] placeholder:text-zinc-600 transition-colors"
+                onFocus={(e) => e.target.select()}
+              />
+              <datalist id="nodes-datalist">
+                {nodes.map(node => <option key={node.id} value={node.id}>{node.name}</option>)}
+              </datalist>
+            </div>
             <button onClick={triggerPing} disabled={isPinging} className="w-full py-2 bg-[#FF0420] disabled:bg-zinc-800 text-white rounded-lg text-[10px] font-black uppercase tracking-widest">
               {isPinging ? 'DIAGNOSING...' : 'PING TEST'}
             </button>
             {pingResult.status && (
-              <div className="mt-3 p-2 bg-zinc-900 rounded border border-zinc-800">
-                <p className="text-[8px] text-zinc-500 uppercase">RTT: <span className="text-white font-mono">{pingResult.rtt}ms</span></p>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }} 
+                animate={{ opacity: 1, height: 'auto' }}
+                className={`mt-3 p-2 rounded border overflow-hidden ${
+                  pingResult.status === 'success' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <span className={`text-[8px] font-black uppercase tracking-widest ${
+                    pingResult.status === 'success' ? 'text-green-500' : 'text-red-500'
+                  }`}>
+                    {pingResult.status === 'success' ? 'SUCCESS' : 'FAILED'}
+                  </span>
+                  {pingResult.status === 'success' && (
+                    <span className="text-xs font-mono font-bold text-white">{pingResult.rtt}ms</span>
+                  )}
+                </div>
+                <p className="text-[7px] text-zinc-500 font-mono mt-1 truncate">TARGET: {pingTarget}</p>
+              </motion.div>
             )}
           </motion.div>
 
