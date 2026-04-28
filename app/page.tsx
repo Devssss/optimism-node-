@@ -51,6 +51,8 @@ export default function Home() {
   const [selectedNodeModalId, setSelectedNodeModalId] = useState<string | null>(null);
   const [refreshInterval, setRefreshInterval] = useState<number>(5000);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedMetrics, setSelectedMetrics] = useState<string[]>(['cpu', 'network']);
+  const [historyData, setHistoryData] = useState<any[]>([]);
   const [thresholds, setThresholds] = useState({
     cpu: 80,
     memory: 85,
@@ -207,50 +209,86 @@ export default function Home() {
     };
     init();
 
+    const initialHistory = Array.from({ length: 20 }, (_, i) => ({
+      time: new Date(Date.now() - (20 - i) * 5000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      cpu: Math.random() * 40 + 20,
+      memory: Math.random() * 10 + 15,
+      network: Math.random() * 400 + 100,
+      disk: Math.random() * 80 + 20
+    }));
+    setHistoryData(initialHistory);
+
     const interval = setInterval(() => {
       setBlockHeight(prev => {
         const nextHeight = prev + 1;
-        setNodes(prevNodes => prevNodes.map(node => {
-          let newStatus = node.status;
-          let newLatency = node.latency;
-          
-          const roll = Math.random();
-          // Simulate status shifts occasionally
-          if (roll < 0.02) {
-            newStatus = 'error';
-            addAlert(node, 'error', 'Critical: Node connection lost');
-          } else if (roll < 0.08) {
-            newStatus = 'syncing';
-          } else if (roll > 0.95) {
-            newStatus = 'synced';
-          }
+        let avgCpu = 0;
+        let avgMem = 0;
+        let avgNet = 0;
+        let avgDisk = 0;
 
-          const nextCpu = Math.min(100, Math.max(0, node.cpu + (Math.random() * 15 - 7)));
-          const nextNetIO = Math.max(0, node.networkIO + (Math.random() * 200 - 100));
-          const baseLat = parseInt(node.latency) || 20;
-          const nextLatVal = Math.max(5, baseLat + Math.floor(Math.random() * 20 - 10));
-          const nextLat = `${nextLatVal}ms`;
-          const memPercent = (node.memory / 64) * 100;
+        const updatedNodes = prevNodes => {
+          const res = prevNodes.map(node => {
+            let newStatus = node.status;
+            let newLatency = node.latency;
+            
+            const roll = Math.random();
+            // Simulate status shifts occasionally
+            if (roll < 0.02) {
+              newStatus = 'error';
+              addAlert(node, 'error', 'Critical: Node connection lost');
+            } else if (roll < 0.08) {
+              newStatus = 'syncing';
+            } else if (roll > 0.95) {
+              newStatus = 'synced';
+            }
 
-          // Threshold-based alerting
-          if (nextCpu > thresholds.cpu) {
-            addAlert(node, 'warning', `High CPU Load: ${nextCpu.toFixed(1)}%`);
-          }
-          if (nextLatVal > thresholds.latency) {
-            addAlert(node, 'high-latency', `High Latency: ${nextLatVal}ms`);
-          }
-          if (memPercent > thresholds.memory) {
-            addAlert(node, 'warning', `High Memory Usage: ${memPercent.toFixed(1)}%`);
-          }
+            const nextCpu = Math.min(100, Math.max(0, node.cpu + (Math.random() * 15 - 7)));
+            const nextNetIO = Math.max(0, node.networkIO + (Math.random() * 200 - 100));
+            const baseLat = parseInt(node.latency) || 20;
+            const nextLatVal = Math.max(5, baseLat + Math.floor(Math.random() * 20 - 10));
+            const nextLat = `${nextLatVal}ms`;
+            const memPercent = (node.memory / 64) * 100;
 
-          return {
-            ...node,
-            status: newStatus,
-            latency: nextLat,
-            cpu: nextCpu,
-            networkIO: nextNetIO
-          };
-        }));
+            // Threshold-based alerting
+            if (nextCpu > thresholds.cpu) {
+              addAlert(node, 'warning', `High CPU Load: ${nextCpu.toFixed(1)}%`);
+            }
+            if (nextLatVal > thresholds.latency) {
+              addAlert(node, 'high-latency', `High Latency: ${nextLatVal}ms`);
+            }
+            if (memPercent > thresholds.memory) {
+              addAlert(node, 'warning', `High Memory Usage: ${memPercent.toFixed(1)}%`);
+            }
+
+            avgCpu += nextCpu;
+            avgMem += node.memory;
+            avgNet += nextNetIO;
+            avgDisk += node.diskIO;
+
+            return {
+              ...node,
+              status: newStatus,
+              latency: nextLat,
+              cpu: nextCpu,
+              networkIO: nextNetIO
+            };
+          });
+
+          // Update history with averages
+          const now = new Date();
+          const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          setHistoryData(prevHist => [...prevHist.slice(1), {
+            time: timeStr,
+            cpu: avgCpu / nodes.length,
+            memory: avgMem / nodes.length,
+            network: avgNet / nodes.length,
+            disk: avgDisk / nodes.length
+          }]);
+
+          return res;
+        };
+
+        setNodes(updatedNodes as any);
         const now = new Date();
         const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
         const newLog = { type: 'INFO', time: timeStr, msg: `Advancing L2 head to block #${nextHeight}` };
@@ -379,6 +417,75 @@ export default function Home() {
                 <p className="text-[7px] text-zinc-500 font-mono mt-1 truncate">TARGET: {pingTarget}</p>
               </motion.div>
             )}
+          </motion.div>
+
+          {/* Historical Trends Section */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="md:col-span-4 bento-card p-6 rounded-xl overflow-hidden min-h-[350px] flex flex-col">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-[10px] uppercase tracking-widest text-[#FF0420] font-black mb-1">Historical Trends</h3>
+                <p className="text-xs text-zinc-500 font-medium">Cluster-wide performance telemetry</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'cpu', label: 'CPU', color: '#FF0420' },
+                  { id: 'memory', label: 'MEM', color: '#A855F7' },
+                  { id: 'network', label: 'NET', color: '#22C55E' },
+                  { id: 'disk', label: 'DSK', color: '#F59E0B' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedMetrics(prev => prev.includes(m.id) ? prev.filter(i => i !== m.id) : [...prev, m.id])}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
+                      selectedMetrics.includes(m.id) 
+                        ? 'bg-zinc-800 border-zinc-700 text-white shadow-[0_0_10px_rgba(255,255,255,0.05)]' 
+                        : 'bg-transparent border-zinc-800/50 text-zinc-500 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: m.color }} />
+                      {m.label}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex-1 w-full min-h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1f1f1f" />
+                  <XAxis 
+                    dataKey="time" 
+                    tick={{ fontSize: 9, fill: '#52525b', fontWeight: 700 }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval={4}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 9, fill: '#52525b', fontWeight: 700 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #27272a', borderRadius: '8px', fontSize: '10px' }}
+                    itemStyle={{ padding: '2px 0' }}
+                  />
+                  {selectedMetrics.includes('cpu') && (
+                    <Line type="monotone" dataKey="cpu" stroke="#FF0420" strokeWidth={2} dot={false} animationDuration={300} />
+                  )}
+                  {selectedMetrics.includes('memory') && (
+                    <Line type="monotone" dataKey="memory" stroke="#A855F7" strokeWidth={2} dot={false} animationDuration={300} />
+                  )}
+                  {selectedMetrics.includes('network') && (
+                    <Line type="monotone" dataKey="network" stroke="#22C55E" strokeWidth={2} dot={false} animationDuration={300} />
+                  )}
+                  {selectedMetrics.includes('disk') && (
+                    <Line type="monotone" dataKey="disk" stroke="#F59E0B" strokeWidth={2} dot={false} animationDuration={300} />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </motion.div>
 
           {/* Nodes List */}
