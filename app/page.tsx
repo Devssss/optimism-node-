@@ -52,10 +52,13 @@ export default function Home() {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'custom'>('24h');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
 
-  // Ping Test State
+  // Global Ping Test State
   const [pingTarget, setPingTarget] = useState<string>('node-01');
   const [isPinging, setIsPinging] = useState(false);
   const [pingResult, setPingResult] = useState<{ rtt: number; status: 'success' | 'fail' | null }>({ rtt: 0, status: null });
+
+  // Per-Node Ping Test State
+  const [perNodePings, setPerNodePings] = useState<Record<string, { rtt: number; status: 'pinging' | 'success' | 'fail' | null }>>({});
 
   const selectedNodeForModal = useMemo(() => 
     nodes.find(n => n.id === selectedNodeModalId),
@@ -77,6 +80,31 @@ export default function Home() {
       setPingResult({ rtt, status: 'success' });
     }
     setIsPinging(false);
+  };
+
+  const triggerPerNodePing = async (nodeId: string) => {
+    setPerNodePings(prev => ({ 
+      ...prev, 
+      [nodeId]: { rtt: 0, status: 'pinging' } 
+    }));
+    
+    // Simulate network latency
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    
+    const targetNode = nodes.find(n => n.id === nodeId);
+    if (!targetNode || targetNode.status === 'error') {
+      setPerNodePings(prev => ({ 
+        ...prev, 
+        [nodeId]: { rtt: 0, status: 'fail' } 
+      }));
+    } else {
+      const baseLatency = parseInt(targetNode.latency);
+      const rtt = baseLatency + Math.floor(Math.random() * 12);
+      setPerNodePings(prev => ({ 
+        ...prev, 
+        [nodeId]: { rtt, status: 'success' } 
+      }));
+    }
   };
 
   const toggleNodeExpansion = (nodeId: string) => {
@@ -476,6 +504,24 @@ export default function Home() {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
+                          triggerPerNodePing(node.id);
+                        }}
+                        disabled={perNodePings[node.id]?.status === 'pinging'}
+                        className={`p-1 rounded hover:bg-zinc-800 transition-colors flex items-center gap-1 group/ping ${
+                          perNodePings[node.id]?.status === 'pinging' ? 'opacity-50 cursor-not-allowed' : 'text-zinc-500 hover:text-[#FF0420]'
+                        }`}
+                        title="Quick Ping Test"
+                      >
+                        <Zap size={10} className={perNodePings[node.id]?.status === 'pinging' ? 'animate-pulse' : ''} />
+                        {perNodePings[node.id]?.status === 'pinging' ? (
+                          <span className="text-[7px] font-black uppercase">...</span>
+                        ) : (
+                          <span className="text-[7px] font-black uppercase group-hover/ping:inline hidden">Ping</span>
+                        )}
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
                           toggleNodeExpansion(node.id);
                         }}
                         className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
@@ -484,6 +530,32 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Per-Node Ping Result */}
+                  <AnimatePresence>
+                    {perNodePings[node.id] && perNodePings[node.id].status !== 'pinging' && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className={`mx-2 p-1.5 rounded bg-zinc-900 border border-zinc-800 flex items-center justify-between mt-1 ${
+                          perNodePings[node.id].status === 'success' ? 'border-green-500/20' : 'border-red-500/20'
+                        }`}>
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={8} className="text-zinc-500" />
+                            <span className="text-[7px] font-black uppercase text-zinc-500">RTT</span>
+                          </div>
+                          <span className={`text-[8px] font-mono font-bold ${
+                            perNodePings[node.id].status === 'success' ? 'text-green-500' : 'text-red-500'
+                          }`}>
+                            {perNodePings[node.id].status === 'success' ? `${perNodePings[node.id].rtt}ms` : 'FAILED'}
+                          </span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                   
                   <AnimatePresence>
                     {expandedNodeIds.includes(node.id) && (
