@@ -76,6 +76,7 @@ export default function Home() {
       name: 'Optimism Mainnet 01', 
       status: 'synced', 
       latency: '12ms',
+      latencyHistory: [12, 14, 11, 13, 12, 15, 12, 13, 11, 12],
       cpu: 24,
       memory: 18.4,
       networkIO: 125,
@@ -86,6 +87,7 @@ export default function Home() {
       name: 'Optimism Mainnet 02', 
       status: 'synced', 
       latency: '45ms',
+      latencyHistory: [40, 42, 45, 48, 50, 45, 47, 44, 45, 46],
       cpu: 58,
       memory: 32.1,
       networkIO: 850,
@@ -96,6 +98,7 @@ export default function Home() {
       name: 'Optimism Backup', 
       status: 'synced', 
       latency: '34ms',
+      latencyHistory: [30, 32, 35, 34, 33, 36, 34, 35, 34, 34],
       cpu: 10,
       memory: 5.1,
       networkIO: 40,
@@ -265,10 +268,13 @@ export default function Home() {
             avgNet += nextNetIO;
             avgDisk += node.diskIO;
 
+            const nextHistory = [...(node.latencyHistory || []).slice(-9), nextLatVal];
+
             return {
               ...node,
               status: newStatus,
               latency: nextLat,
+              latencyHistory: nextHistory,
               cpu: nextCpu,
               networkIO: nextNetIO
             };
@@ -539,9 +545,28 @@ export default function Home() {
                     <Cpu size={10} className="text-zinc-500"/>
                     <span className="font-mono font-bold">{node.cpu.toFixed(1)}%</span>
                   </div>
-                  <div className="flex items-center gap-1.5 p-1.5 rounded bg-zinc-900/50">
-                    <Globe size={10} className="text-zinc-500"/>
-                    <span className="font-mono font-bold">{node.latency}</span>
+                  <div className="flex items-center gap-1.5 p-1.5 rounded bg-zinc-900/50 justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Globe size={10} className="text-zinc-500"/>
+                      <span className="font-mono font-bold">{node.latency}</span>
+                    </div>
+                    {node.latencyHistory && (
+                      <div className="w-10 h-3 flex items-end gap-[1px]">
+                        {node.latencyHistory.map((val, i) => {
+                          const max = Math.max(...node.latencyHistory);
+                          const min = Math.min(...node.latencyHistory);
+                          const range = max - min || 1;
+                          const height = ((val - min) / range) * 100;
+                          return (
+                            <div 
+                              key={i} 
+                              className={`w-[2px] rounded-full transition-all duration-500 ${val > thresholds.latency ? 'bg-[#FF0420]' : 'bg-zinc-600'}`}
+                              style={{ height: `${Math.max(20, height)}%` }}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
