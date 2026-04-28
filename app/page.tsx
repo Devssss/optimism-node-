@@ -291,7 +291,7 @@ export default function Home() {
             <div>
               <h1 className="text-xl font-bold tracking-tight">OP-STACK NODE <span className="text-zinc-500 font-mono text-sm ml-2 font-medium">v1.7.4-mainnet</span></h1>
               <div className="flex items-center gap-2 text-xs">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                <CheckCircle2 size={12} className="text-green-500 animate-pulse" />
                 <span className="text-zinc-400 uppercase tracking-widest font-bold">Status: Active Monitor</span>
               </div>
             </div>
@@ -387,6 +387,11 @@ export default function Home() {
               <div key={node.id} className="bento-card p-4 rounded-xl border border-zinc-800 hover:border-[#FF0420] transition-all duration-300">
                 <div className="flex justify-between items-center mb-3">
                   <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center">
+                      {node.status === 'synced' && <CheckCircle2 size={12} className="text-green-500" />}
+                      {node.status === 'syncing' && <Clock size={12} className="text-yellow-500" />}
+                      {node.status === 'error' && <AlertTriangle size={12} className="text-[#FF0420]" />}
+                    </div>
                     <span 
                       onClick={() => setSelectedNodeModalId(node.id)} 
                       className="text-xs font-black cursor-pointer hover:text-[#FF0420] transition-colors"
@@ -568,7 +573,14 @@ export default function Home() {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setSelectedNodeModalId(null)} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative w-full max-w-lg bg-[#0a0a0a] border border-zinc-800 rounded-2xl p-6 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-black uppercase">{selectedNodeForModal.name}</h2>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center">
+                    {selectedNodeForModal.status === 'synced' && <CheckCircle2 size={20} className="text-green-500" />}
+                    {selectedNodeForModal.status === 'syncing' && <Clock size={20} className="text-yellow-500" />}
+                    {selectedNodeForModal.status === 'error' && <AlertTriangle size={20} className="text-[#FF0420]" />}
+                  </div>
+                  <h2 className="text-xl font-black uppercase">{selectedNodeForModal.name}</h2>
+                </div>
                 <button onClick={() => setSelectedNodeModalId(null)} className="text-zinc-500 hover:text-white"><X size={20} /></button>
               </div>
               <div className="grid grid-cols-2 gap-4">
