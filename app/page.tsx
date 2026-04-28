@@ -52,9 +52,32 @@ export default function Home() {
   const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'custom'>('24h');
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
 
+  // Ping Test State
+  const [pingTarget, setPingTarget] = useState<string>('node-01');
+  const [isPinging, setIsPinging] = useState(false);
+  const [pingResult, setPingResult] = useState<{ rtt: number; status: 'success' | 'fail' | null }>({ rtt: 0, status: null });
+
   const selectedNodeForModal = useMemo(() => 
     nodes.find(n => n.id === selectedNodeModalId),
   [selectedNodeModalId, nodes]);
+
+  const triggerPing = async () => {
+    setIsPinging(true);
+    setPingResult({ rtt: 0, status: null });
+    
+    // Simulate network latency
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    const targetNode = nodes.find(n => n.id === pingTarget);
+    if (!targetNode || targetNode.status === 'error') {
+      setPingResult({ rtt: 0, status: 'fail' });
+    } else {
+      const baseLatency = parseInt(targetNode.latency);
+      const rtt = baseLatency + Math.floor(Math.random() * 15);
+      setPingResult({ rtt, status: 'success' });
+    }
+    setIsPinging(false);
+  };
 
   const toggleNodeExpansion = (nodeId: string) => {
     setExpandedNodeIds(prev => 
@@ -545,6 +568,84 @@ export default function Home() {
                   <p className="text-[8px] text-[#FF0420] animate-pulse font-black uppercase">Attention Required ({alerts.length})</p>
                </div>
             )}
+          </motion.div>
+
+          {/* Node Diagnostics / Ping Test */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="md:col-span-1 bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Diagnostics</p>
+              <Zap size={14} className="text-[#FF0420]" />
+            </div>
+            
+            <div className="flex flex-col gap-4 flex-1">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Target Node</label>
+                <select 
+                  value={pingTarget}
+                  onChange={(e) => setPingTarget(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-[10px] font-black text-white focus:outline-none focus:border-[#FF0420] appearance-none cursor-pointer"
+                >
+                  {nodes.map(node => (
+                    <option key={node.id} value={node.id}>{node.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button 
+                onClick={triggerPing}
+                disabled={isPinging}
+                className="w-full py-3 bg-[#FF0420] disabled:bg-zinc-800 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,4,32,0.2)] disabled:shadow-none"
+              >
+                {isPinging ? (
+                  <>
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <Zap size={12} />
+                    </motion.div>
+                    DIAGNOSING...
+                  </>
+                ) : (
+                  <>
+                    <Activity size={12} />
+                    INITIATE PING TEST
+                  </>
+                )}
+              </button>
+
+              <div className="mt-auto space-y-3">
+                <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800/50">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">Resulting RTT</span>
+                    <span className={`text-[8px] font-black uppercase ${
+                      pingResult.status === 'success' ? 'text-green-500' : 
+                      pingResult.status === 'fail' ? 'text-red-500' : 'text-zinc-600'
+                    }`}>
+                      {pingResult.status || 'NO DATA'}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className={`text-2xl font-mono font-black ${
+                      pingResult.rtt > 50 ? 'text-yellow-500' : 'text-white'
+                    }`}>
+                      {pingResult.rtt || '--'}
+                    </span>
+                    <span className="text-[10px] font-bold text-zinc-600">ms</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 px-2 text-[8px] text-zinc-600 font-bold uppercase tracking-tighter italic">
+                  <Info size={10} />
+                  <span>Diagnostics bypass standard cache layer</span>
+                </div>
+              </div>
+            </div>
           </motion.div>
 
           {/* Historical Trends */}
