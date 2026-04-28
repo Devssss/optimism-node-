@@ -107,6 +107,43 @@ export default function Home() {
     }
   };
 
+  const calculateHealthScore = useCallback((node: any) => {
+    let score = 0;
+    
+    // Status Weight: 40%
+    if (node.status === 'synced') score += 40;
+    else if (node.status === 'syncing') score += 20;
+    
+    // Latency Weight: 20%
+    const lat = parseInt(node.latency);
+    if (!isNaN(lat)) {
+      if (lat < 30) score += 20;
+      else if (lat < 100) score += 15;
+      else if (lat < 300) score += 8;
+      else score += 4;
+    }
+
+    // CPU Weight: 15%
+    if (node.cpu < 50) score += 15;
+    else if (node.cpu < 80) score += 10;
+    else if (node.cpu < 95) score += 4;
+    else score += 1;
+
+    // Memory Weight: 15% (assuming 64GB max)
+    const memPercent = (node.memory / 64) * 100;
+    if (memPercent < 60) score += 15;
+    else if (memPercent < 85) score += 10;
+    else if (memPercent < 95) score += 4;
+    else score += 1;
+
+    // Load/IO Weight: 10%
+    if (node.networkIO < 500 && node.diskIO < 200) score += 10;
+    else if (node.networkIO < 1000 && node.diskIO < 400) score += 6;
+    else score += 2;
+
+    return Math.min(100, score);
+  }, []);
+
   const toggleNodeExpansion = (nodeId: string) => {
     setExpandedNodeIds(prev => 
       prev.includes(nodeId) 
@@ -492,6 +529,23 @@ export default function Home() {
                       >
                         {node.name}
                       </span>
+                      <div className="flex items-center gap-1">
+                        <div className="w-8 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-500 ${
+                              calculateHealthScore(node) > 80 ? 'bg-green-500' : 
+                              calculateHealthScore(node) > 50 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${calculateHealthScore(node)}%` }}
+                          />
+                        </div>
+                        <span className={`text-[7px] font-mono font-black ${
+                          calculateHealthScore(node) > 80 ? 'text-green-500' : 
+                          calculateHealthScore(node) > 50 ? 'text-yellow-500' : 'text-red-500'
+                        }`}>
+                          {calculateHealthScore(node)}%
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase ${
@@ -880,7 +934,10 @@ export default function Home() {
                     <div>
                       <h2 className="text-xl font-black uppercase text-white">{selectedNodeForModal.name}</h2>
                       <p className="text-[10px] text-zinc-500 font-mono flex items-center gap-2">
-                        {selectedNodeForModal.id} • STATUS: <span className="text-[#FF0420]">{selectedNodeForModal.status.toUpperCase()}</span>
+                        {selectedNodeForModal.id} • STATUS: <span className="text-[#FF0420]">{selectedNodeForModal.status.toUpperCase()}</span> • HEALTH: <span className={
+                          calculateHealthScore(selectedNodeForModal) > 80 ? 'text-green-500' : 
+                          calculateHealthScore(selectedNodeForModal) > 50 ? 'text-yellow-500' : 'text-red-500'
+                        }>{calculateHealthScore(selectedNodeForModal)}%</span>
                       </p>
                     </div>
                   </div>
