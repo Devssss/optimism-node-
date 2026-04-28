@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -16,7 +16,11 @@ import {
   Terminal as TerminalIcon,
   TrendingUp,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Bell,
+  AlertTriangle,
+  X,
+  Info
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -28,10 +32,20 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 
+interface NodeAlert {
+  id: string;
+  nodeId: string;
+  nodeName: string;
+  type: 'error' | 'warning' | 'high-latency';
+  message: string;
+  timestamp: string;
+}
+
 export default function Home() {
   const [isReady, setIsReady] = useState(false);
   const [blockHeight, setBlockHeight] = useState(114290512);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>('node-01');
+  const [alerts, setAlerts] = useState<NodeAlert[]>([]);
   
   const historyData = useMemo(() => [
     { time: '08:00', cpu: 15, mem: 12, disk: 40, net: 110 },
@@ -51,40 +65,57 @@ export default function Home() {
       latency: '12ms',
       cpu: 24,
       memory: 18.4,
-      disk: 1.2,
       networkIO: 125,
       diskIO: 45
     },
     { 
       id: 'node-02', 
       name: 'Optimism Mainnet 02', 
-      status: 'syncing', 
+      status: 'synced', 
       latency: '45ms',
       cpu: 58,
       memory: 32.1,
-      disk: 0.9,
       networkIO: 850,
       diskIO: 120
     },
     { 
       id: 'node-03', 
       name: 'Optimism Backup', 
-      status: 'error', 
-      latency: 'timeout',
-      cpu: 0,
-      memory: 0.1,
-      disk: 1.5,
-      networkIO: 0,
-      diskIO: 0
+      status: 'synced', 
+      latency: '34ms',
+      cpu: 10,
+      memory: 5.1,
+      networkIO: 40,
+      diskIO: 12
     }
   ]);
 
   const [logs, setLogs] = useState([
     { type: 'INFO', time: '14:04:22', msg: 'Advancing L2 head to block #114290512' },
     { type: 'INFO', time: '14:04:20', msg: 'Derivation layer: processing L1 origin #18492021' },
-    { type: 'WARN', time: '14:04:18', msg: 'Slow P2P response from peer 0x82...a1 (240ms)' },
+    { type: 'INFO', time: '14:04:18', msg: 'P2P handshake successful with peer 0x82...a1' },
     { type: 'INFO', time: '14:04:16', msg: 'Synced L1 payload metadata for sequencer' }
   ]);
+
+  const addAlert = useCallback((node: any, type: NodeAlert['type'], message: string) => {
+    const alertId = `${node.id}-${type}-${Date.now()}`;
+    // Only add if not already alerting for this specific reason
+    setAlerts(prev => {
+      if (prev.some(a => a.nodeId === node.id && a.type === type)) return prev;
+      return [{
+        id: alertId,
+        nodeId: node.id,
+        nodeName: node.name,
+        type,
+        message,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      }, ...prev].slice(0, 5);
+    });
+  }, []);
+
+  const dismissAlert = (id: string) => {
+    setAlerts(prev => prev.filter(a => a.id !== id));
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -99,6 +130,38 @@ export default function Home() {
 
     const interval = setInterval(() => {
       setBlockHeight(prev => prev + 1);
+      
+      // Simulate real-time variation and anomalies
+      setNodes(prevNodes => {
+        return prevNodes.map(node => {
+          let newStatus = node.status;
+          let newLatency = node.latency;
+          
+          // Random anomaly simulation (5% chance)
+          const roll = Math.random();
+          if (roll < 0.05) {
+            newStatus = 'error';
+            newLatency = 'timeout';
+            addAlert(node, 'error', 'Critical: Node entered ERROR state');
+          } else if (roll < 0.15 && roll >= 0.05) {
+            newStatus = 'syncing';
+            newLatency = `${Math.floor(Math.random() * 500 + 100)}ms`;
+            addAlert(node, 'high-latency', `High Latency Detected: ${newLatency}`);
+          } else {
+            newStatus = 'synced';
+            newLatency = `${Math.floor(Math.random() * 20 + 10)}ms`;
+          }
+
+          return {
+            ...node,
+            status: newStatus,
+            latency: newLatency,
+            cpu: Math.min(100, Math.max(0, node.cpu + (Math.random() * 10 - 5))),
+            networkIO: Math.max(0, node.networkIO + (Math.random() * 100 - 50))
+          };
+        });
+      });
+
       const now = new Date();
       const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
       const newLog = { 
@@ -107,15 +170,49 @@ export default function Home() {
         msg: `Advancing L2 head to block #${blockHeight + 1}` 
       };
       setLogs(prev => [newLog, ...prev.slice(0, 3)]);
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [blockHeight]);
+  }, [blockHeight, addAlert]);
 
   if (!isReady) return null;
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#FF0420] selection:text-white">
+      {/* Alert Overlay */}
+      <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-full max-w-xs pointer-events-none">
+        <AnimatePresence>
+          {alerts.map((alert) => (
+            <motion.div
+              layout
+              initial={{ opacity: 0, x: 50, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.95 }}
+              key={alert.id}
+              className={`pointer-events-auto p-4 rounded-xl border flex gap-3 shadow-2xl backdrop-blur-md ${
+                alert.type === 'error' 
+                  ? 'bg-red-500/10 border-red-500/50 text-red-200' 
+                  : 'bg-yellow-500/10 border-yellow-500/50 text-yellow-200'
+              }`}
+            >
+              <div className="mt-1">
+                {alert.type === 'error' ? <AlertTriangle size={18} className="text-red-500" /> : <Info size={18} className="text-yellow-500" />}
+              </div>
+              <div className="flex-1">
+                <div className="flex justify-between items-start">
+                  <h4 className="text-[10px] uppercase font-black tracking-widest leading-none mb-1">{alert.nodeName}</h4>
+                  <button onClick={() => dismissAlert(alert.id)} className="text-zinc-500 hover:text-white">
+                    <X size={14} />
+                  </button>
+                </div>
+                <p className="text-xs font-medium">{alert.message}</p>
+                <span className="text-[8px] opacity-60 font-mono mt-1 block">{alert.timestamp}</span>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       <div className="max-w-[1024px] mx-auto p-4 md:p-6 flex flex-col gap-6">
         
         {/* Header */}
@@ -130,19 +227,23 @@ export default function Home() {
               </h1>
               <div className="flex items-center gap-2 text-xs">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-zinc-400 uppercase tracking-widest font-bold">Status: Fully Synced</span>
+                <span className="text-zinc-400 uppercase tracking-widest font-bold">Status: Active Monitor</span>
               </div>
             </div>
           </div>
           
-          <div className="flex gap-8">
-            <div className="text-left md:text-right">
-              <p className="text-zinc-500 uppercase tracking-tighter text-[10px] font-black">Uptime</p>
-              <p className="font-mono font-bold text-sm">14d 06h 22m</p>
+          <div className="flex items-center gap-8">
+            <div className="relative group">
+              <Bell size={18} className={`${alerts.length > 0 ? 'text-[#FF0420] animate-bounce' : 'text-zinc-500'}`} />
+              {alerts.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-[#050505]">
+                  {alerts.length}
+                </span>
+              )}
             </div>
-            <div className="text-left md:text-right">
-              <p className="text-zinc-500 uppercase tracking-tighter text-[10px] font-black">Network</p>
-              <p className="font-mono font-bold text-sm">Mainnet (10)</p>
+            <div className="text-right">
+              <p className="text-zinc-500 uppercase tracking-tighter text-[10px] font-black">Cluster Health</p>
+              <p className="font-mono font-bold text-sm">{nodes.filter(n => n.status === 'synced').length}/{nodes.length} OK</p>
             </div>
           </div>
         </header>
@@ -213,7 +314,7 @@ export default function Home() {
             </div>
             <div className="flex items-end justify-between">
               <h3 className="text-4xl md:text-5xl font-bold font-mono">42</h3>
-              <div className="flex gap-1 h-12 items-end pb-1">
+              <div className="flex gap-1 h-12 items-end pb-1 text-red-500">
                 <div className="w-1 bg-zinc-700 h-4 rounded-t-sm"></div>
                 <div className="w-1 bg-zinc-700 h-6 rounded-t-sm"></div>
                 <div className="w-1 bg-[#FF0420] h-10 rounded-t-sm shadow-[0_0_8px_rgba(255,4,32,0.4)]"></div>
@@ -223,7 +324,7 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Gas Price */}
+          {/* L2 Gas Price */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -278,7 +379,7 @@ export default function Home() {
             </div>
           </motion.div>
 
-          {/* Cluster Nodes Status */}
+          {/* Cluster Status Side Panel */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -286,15 +387,15 @@ export default function Home() {
             className="md:col-span-1 bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col"
           >
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Cluster Health</p>
+              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Node Cluster</p>
               <Activity size={14} className="text-zinc-600" />
             </div>
             <div className="space-y-3">
               {nodes.map((node) => (
                 <div 
                   key={node.id} 
-                  className={`flex flex-col gap-2 p-2 rounded-lg transition-colors cursor-pointer ${
-                    selectedNodeId === node.id ? 'bg-[#1a1a1a] shadow-inner' : 'hover:bg-[#161616]'
+                  className={`flex flex-col gap-2 p-2 rounded-lg transition-colors cursor-pointer border ${
+                    selectedNodeId === node.id ? 'bg-[#1a1a1a] border-zinc-700 shadow-inner' : 'hover:bg-[#161616] border-transparent'
                   }`}
                   onClick={() => setSelectedNodeId(selectedNodeId === node.id ? null : node.id)}
                 >
@@ -336,20 +437,7 @@ export default function Home() {
                                   className="h-full bg-blue-500"
                                 />
                               </div>
-                              <span className="text-[8px] font-mono whitespace-nowrap">{node.cpu}%</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[7px] text-zinc-500 uppercase font-black">Memory</span>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${(node.memory/64)*100}%` }}
-                                  className="h-full bg-purple-500"
-                                />
-                              </div>
-                              <span className="text-[8px] font-mono whitespace-nowrap">{node.memory}GB</span>
+                              <span className="text-[8px] font-mono whitespace-nowrap">{Math.round(node.cpu)}%</span>
                             </div>
                           </div>
                           <div className="flex flex-col gap-1">
@@ -362,20 +450,7 @@ export default function Home() {
                                   className="h-full bg-green-500"
                                 />
                               </div>
-                              <span className="text-[8px] font-mono whitespace-nowrap">{node.networkIO}MB/s</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[7px] text-zinc-500 uppercase font-black">Disk I/O</span>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${Math.min((node.diskIO/500)*100, 100)}%` }}
-                                  className="h-full bg-yellow-500"
-                                />
-                              </div>
-                              <span className="text-[8px] font-mono whitespace-nowrap">{node.diskIO}MB/s</span>
+                              <span className="text-[8px] font-mono whitespace-nowrap">{Math.round(node.networkIO)} MB/s</span>
                             </div>
                           </div>
                         </div>
@@ -390,6 +465,11 @@ export default function Home() {
                 </div>
               ))}
             </div>
+            {alerts.length > 0 && selectedNodeId === null && (
+               <div className="mt-auto pt-4 text-center">
+                  <p className="text-[8px] text-[#FF0420] animate-pulse font-black uppercase">Attention Required ({alerts.length})</p>
+               </div>
+            )}
           </motion.div>
 
           {/* Historical Trends */}
@@ -402,16 +482,12 @@ export default function Home() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <TrendingUp size={14} className="text-zinc-600" />
-                <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Historical Trends (Last 7h)</p>
+                <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Cluster Health History (7h)</p>
               </div>
               <div className="flex gap-4">
                 <div className="flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                   <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">CPU</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                  <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">MEM</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
@@ -458,14 +534,6 @@ export default function Home() {
                   />
                   <Line 
                     type="monotone" 
-                    dataKey="mem" 
-                    stroke="#a855f7" 
-                    strokeWidth={2} 
-                    dot={false} 
-                    activeDot={{ r: 4, strokeWidth: 0 }}
-                  />
-                   <Line 
-                    type="monotone" 
                     dataKey="net" 
                     stroke="#22c55e" 
                     strokeWidth={2} 
@@ -487,11 +555,11 @@ export default function Home() {
            <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
                 <Database size={12} className="text-zinc-600" />
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">1.2 TB STORAGE</span>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">1.2 TB STORAGE ACTIVE</span>
               </div>
               <div className="flex items-center gap-2">
                 <Cpu size={12} className="text-zinc-600" />
-                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">16 CORES ACTIVE</span>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">NODE VERSION 1.7.4-STABLE</span>
               </div>
            </div>
         </footer>
