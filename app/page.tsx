@@ -46,16 +46,31 @@ export default function Home() {
   const [blockHeight, setBlockHeight] = useState(114290512);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>('node-01');
   const [alerts, setAlerts] = useState<NodeAlert[]>([]);
+  const [timeRange, setTimeRange] = useState<'24h' | '7d' | '30d' | 'custom'>('24h');
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
   
-  const historyData = useMemo(() => [
-    { time: '08:00', cpu: 15, mem: 12, disk: 40, net: 110 },
-    { time: '09:00', cpu: 25, mem: 14, disk: 42, net: 220 },
-    { time: '10:00', cpu: 45, mem: 18, disk: 45, net: 450 },
-    { time: '11:00', cpu: 30, mem: 20, disk: 48, net: 310 },
-    { time: '12:00', cpu: 24, mem: 22, disk: 50, net: 280 },
-    { time: '13:00', cpu: 60, mem: 25, disk: 55, net: 850 },
-    { time: '14:00', cpu: 35, mem: 26, disk: 58, net: 420 },
-  ], []);
+  const historyData = useMemo(() => {
+    const baseData = [
+      { time: '08:00', cpu: 15, mem: 12, disk: 40, net: 110 },
+      { time: '09:00', cpu: 25, mem: 14, disk: 42, net: 220 },
+      { time: '10:00', cpu: 45, mem: 18, disk: 45, net: 450 },
+      { time: '11:00', cpu: 30, mem: 20, disk: 48, net: 310 },
+      { time: '12:00', cpu: 24, mem: 22, disk: 50, net: 280 },
+      { time: '13:00', cpu: 60, mem: 25, disk: 55, net: 850 },
+      { time: '14:00', cpu: 35, mem: 26, disk: 58, net: 420 },
+    ];
+
+    if (timeRange === '7d') {
+      return baseData.map((d, i) => ({ ...d, time: `Day ${i + 1}`, cpu: d.cpu + Math.random() * 10 }));
+    }
+    if (timeRange === '30d') {
+      return baseData.map((d, i) => ({ ...d, time: `Week ${Math.floor(i / 2) + 1}`, cpu: d.cpu + Math.random() * 20 }));
+    }
+    if (timeRange === 'custom') {
+      return baseData.map((d, i) => ({ ...d, time: `C-${i}`, cpu: d.cpu + Math.random() * 5 }));
+    }
+    return baseData;
+  }, [timeRange]);
 
   const [nodes, setNodes] = useState([
     { 
@@ -482,16 +497,55 @@ export default function Home() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <TrendingUp size={14} className="text-zinc-600" />
-                <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Cluster Health History (7h)</p>
+                <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Cluster Health History</p>
               </div>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                  <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">CPU</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">NET</span>
+              <div className="flex flex-col md:flex-row items-end gap-2">
+                {timeRange === 'custom' && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex gap-2 items-center mr-2"
+                  >
+                    <input 
+                      type="date" 
+                      className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 text-[8px] font-mono text-zinc-400 focus:outline-none focus:border-[#FF0420]" 
+                      onChange={(e) => setCustomRange(prev => ({ ...prev, start: e.target.value }))}
+                    />
+                    <span className="text-[8px] text-zinc-600 font-bold tracking-tighter">TO</span>
+                    <input 
+                      type="date" 
+                      className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 text-[8px] font-mono text-zinc-400 focus:outline-none focus:border-[#FF0420]" 
+                      onChange={(e) => setCustomRange(prev => ({ ...prev, end: e.target.value }))}
+                    />
+                  </motion.div>
+                )}
+                <div className="flex items-center gap-4">
+                  <div className="flex bg-zinc-900 rounded-lg p-0.5 border border-zinc-800">
+                    {(['24h', '7d', '30d', 'custom'] as const).map((range) => (
+                      <button
+                        key={range}
+                        onClick={() => setTimeRange(range)}
+                        className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase transition-all ${
+                          timeRange === range 
+                            ? 'bg-[#FF0420] text-white' 
+                            : 'text-zinc-500 hover:text-zinc-300'
+                        }`}
+                      >
+                        {range}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="h-4 w-[1px] bg-zinc-800 mx-1" />
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">CPU</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">NET</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
