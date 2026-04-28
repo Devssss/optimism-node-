@@ -1,0 +1,6 @@
+{
+  "name": "OP Node Tracker",
+  "description": "Real-time monitoring for Optimism nodes and network health, built for the Base Mini-App ecosystem.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["onchain"]
+}
