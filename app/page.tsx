@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -13,13 +13,36 @@ import {
   CheckCircle2, 
   Clock, 
   HardDrive, 
-  Terminal as TerminalIcon 
+  Terminal as TerminalIcon,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
 
 export default function Home() {
   const [isReady, setIsReady] = useState(false);
   const [blockHeight, setBlockHeight] = useState(114290512);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>('node-01');
+  
+  const historyData = useMemo(() => [
+    { time: '08:00', cpu: 15, mem: 12, disk: 40, net: 110 },
+    { time: '09:00', cpu: 25, mem: 14, disk: 42, net: 220 },
+    { time: '10:00', cpu: 45, mem: 18, disk: 45, net: 450 },
+    { time: '11:00', cpu: 30, mem: 20, disk: 48, net: 310 },
+    { time: '12:00', cpu: 24, mem: 22, disk: 50, net: 280 },
+    { time: '13:00', cpu: 60, mem: 25, disk: 55, net: 850 },
+    { time: '14:00', cpu: 35, mem: 26, disk: 58, net: 420 },
+  ], []);
+
   const [nodes, setNodes] = useState([
     { 
       id: 'node-01', 
@@ -28,7 +51,9 @@ export default function Home() {
       latency: '12ms',
       cpu: 24,
       memory: 18.4,
-      disk: 1.2
+      disk: 1.2,
+      networkIO: 125,
+      diskIO: 45
     },
     { 
       id: 'node-02', 
@@ -37,7 +62,9 @@ export default function Home() {
       latency: '45ms',
       cpu: 58,
       memory: 32.1,
-      disk: 0.9
+      disk: 0.9,
+      networkIO: 850,
+      diskIO: 120
     },
     { 
       id: 'node-03', 
@@ -46,19 +73,26 @@ export default function Home() {
       latency: 'timeout',
       cpu: 0,
       memory: 0.1,
-      disk: 1.5
+      disk: 1.5,
+      networkIO: 0,
+      diskIO: 0
     }
   ]);
+
   const [logs, setLogs] = useState([
-    { type: 'INFO', time: '12:04:22', msg: 'Advancing L2 head to block #114290512' },
-    { type: 'INFO', time: '12:04:20', msg: 'Derivation layer: processing L1 origin #18492021' },
-    { type: 'WARN', time: '12:04:18', msg: 'Slow P2P response from peer 0x82...a1 (240ms)' },
-    { type: 'INFO', time: '12:04:16', msg: 'Synced L1 payload metadata for sequencer' }
+    { type: 'INFO', time: '14:04:22', msg: 'Advancing L2 head to block #114290512' },
+    { type: 'INFO', time: '14:04:20', msg: 'Derivation layer: processing L1 origin #18492021' },
+    { type: 'WARN', time: '14:04:18', msg: 'Slow P2P response from peer 0x82...a1 (240ms)' },
+    { type: 'INFO', time: '14:04:16', msg: 'Synced L1 payload metadata for sequencer' }
   ]);
 
   useEffect(() => {
     const init = async () => {
-      await sdk.actions.ready();
+      try {
+        await sdk.actions.ready();
+      } catch (e) {
+        console.error("SDK ready failed", e);
+      }
       setIsReady(true);
     };
     init();
@@ -92,22 +126,22 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-xl font-bold tracking-tight">
-                OP-STACK NODE <span className="text-zinc-500 font-mono text-sm ml-2">v1.7.4-mainnet</span>
+                OP-STACK NODE <span className="text-zinc-500 font-mono text-sm ml-2 font-medium">v1.7.4-mainnet</span>
               </h1>
               <div className="flex items-center gap-2 text-xs">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                <span className="text-zinc-400 uppercase tracking-widest font-medium">Status: Fully Synced</span>
+                <span className="text-zinc-400 uppercase tracking-widest font-bold">Status: Fully Synced</span>
               </div>
             </div>
           </div>
           
           <div className="flex gap-8">
             <div className="text-left md:text-right">
-              <p className="text-zinc-500 uppercase tracking-tighter text-[10px] font-bold">Uptime</p>
+              <p className="text-zinc-500 uppercase tracking-tighter text-[10px] font-black">Uptime</p>
               <p className="font-mono font-bold text-sm">14d 06h 22m</p>
             </div>
             <div className="text-left md:text-right">
-              <p className="text-zinc-500 uppercase tracking-tighter text-[10px] font-bold">Network</p>
+              <p className="text-zinc-500 uppercase tracking-tighter text-[10px] font-black">Network</p>
               <p className="font-mono font-bold text-sm">Mainnet (10)</p>
             </div>
           </div>
@@ -126,20 +160,20 @@ export default function Home() {
             
             <div className="flex justify-between items-start relative z-10">
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-zinc-400 mb-1 font-bold">Current Block Height</p>
+                <p className="text-[10px] uppercase tracking-widest text-zinc-400 mb-1 font-black">Current Block Height</p>
                 <h2 className="text-4xl md:text-6xl font-black font-mono tracking-tighter">
                   {blockHeight.toLocaleString()}
                 </h2>
               </div>
-              <div className="p-2 rounded bg-zinc-800/50 text-[10px] font-mono text-zinc-300 border border-zinc-700">
+              <div className="p-2 rounded bg-zinc-800/50 text-[10px] font-mono text-zinc-300 border border-zinc-700 font-bold">
                 0x4d2a...8b1e
               </div>
             </div>
 
             <div className="space-y-4 relative z-10 pt-8">
               <div className="flex justify-between text-[10px] font-mono">
-                <span className="text-zinc-500 uppercase tracking-widest">Syncing Progress</span>
-                <span className="text-[#FF0420] font-bold">100%</span>
+                <span className="text-zinc-500 uppercase tracking-widest font-bold">Syncing Progress</span>
+                <span className="text-[#FF0420] font-black">100%</span>
               </div>
               <div className="w-full bg-zinc-800/50 h-3 rounded-full overflow-hidden border border-zinc-700">
                 <motion.div 
@@ -151,16 +185,16 @@ export default function Home() {
               
               <div className="grid grid-cols-3 gap-4 pt-6 border-t border-zinc-800">
                 <div>
-                  <p className="text-zinc-500 mb-1 text-[10px] uppercase font-bold">Avg Block</p>
+                  <p className="text-zinc-500 mb-1 text-[10px] uppercase font-black">Avg Block</p>
                   <p className="text-lg md:text-xl font-bold font-mono">2.0s</p>
                 </div>
                 <div>
-                  <p className="text-zinc-500 mb-1 text-[10px] uppercase font-bold">Base Fee</p>
-                  <p className="text-lg md:text-xl font-bold font-mono">0.01 <span className="text-xs font-normal opacity-60">Gwei</span></p>
+                  <p className="text-zinc-500 mb-1 text-[10px] uppercase font-black">Base Fee</p>
+                  <p className="text-lg md:text-xl font-bold font-mono">0.01 <span className="text-[10px] font-bold opacity-60">GWEI</span></p>
                 </div>
                 <div>
-                  <p className="text-zinc-500 mb-1 text-[10px] uppercase font-bold">L1 Origin</p>
-                  <p className="text-lg md:text-xl font-bold font-mono">18,492,021</p>
+                  <p className="text-zinc-500 mb-1 text-[10px] uppercase font-black">L1 Origin</p>
+                  <p className="text-lg md:text-xl font-bold font-mono text-zinc-200">18,492,021</p>
                 </div>
               </div>
             </div>
@@ -171,10 +205,10 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col justify-between"
+            className="bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col justify-between shadow-sm"
           >
             <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Peers</p>
+              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Peers</p>
               <Globe size={14} className="text-zinc-600" />
             </div>
             <div className="flex items-end justify-between">
@@ -197,58 +231,14 @@ export default function Home() {
             className="bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col justify-between"
           >
             <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">L2 Gas</p>
-              <Activity size={14} className="text-zinc-600" />
+              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">L2 Gas</p>
+              <Zap size={14} className="text-zinc-600" />
             </div>
             <div>
               <h3 className="text-3xl md:text-4xl font-bold font-mono text-[#FF0420] shadow-text">0.0012</h3>
-              <p className="text-[10px] font-bold text-zinc-500 uppercase mt-1 flex items-center gap-1">
-                <Zap size={10} className="text-green-500" /> -12% vs last hour
+              <p className="text-[10px] font-black text-zinc-500 uppercase mt-1 flex items-center gap-1">
+                <ArrowDownRight size={10} className="text-green-500" /> -12% vs last hour
               </p>
-            </div>
-          </motion.div>
-
-          {/* CPU Usage */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">CPU</p>
-              <Cpu size={14} className="text-zinc-600" />
-            </div>
-            <div>
-              <div className="flex justify-between items-end mb-2">
-                <h3 className="text-2xl md:text-3xl font-bold font-mono">24%</h3>
-                <span className="text-[8px] font-mono text-zinc-500 font-bold">16 CORES</span>
-              </div>
-              <div className="w-full bg-zinc-800/50 h-1.5 rounded-full overflow-hidden border border-zinc-700">
-                <div className="bg-blue-500 h-full w-1/4 shadow-[0_0_8px_rgba(59,130,246,0.4)]"></div>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Memory */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Memory</p>
-              <Database size={14} className="text-zinc-600" />
-            </div>
-            <div>
-              <div className="flex justify-between items-end mb-2">
-                <h3 className="text-2xl md:text-3xl font-bold font-mono">18.4 <span className="text-xs opacity-50">GB</span></h3>
-                <span className="text-[8px] font-mono text-zinc-500 font-bold">OF 64 GB</span>
-              </div>
-              <div className="w-full bg-zinc-800/50 h-1.5 rounded-full overflow-hidden border border-zinc-700">
-                <div className="bg-purple-500 h-full w-[28%] shadow-[0_0_8px_rgba(168,85,247,0.4)]"></div>
-              </div>
             </div>
           </motion.div>
 
@@ -256,15 +246,15 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.3 }}
             className="md:col-span-2 bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 overflow-hidden"
           >
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 <TerminalIcon size={14} className="text-zinc-600" />
-                <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Recent Events</p>
+                <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Recent Events</p>
               </div>
-              <span className="text-[8px] text-zinc-600 font-mono animate-pulse font-bold">LIVE LOG STREAM</span>
+              <span className="text-[8px] text-zinc-600 font-mono animate-pulse font-black">LIVE LOG STREAM</span>
             </div>
             <div className="space-y-2 font-mono text-[10px] overflow-hidden">
               <AnimatePresence mode="popLayout">
@@ -277,7 +267,7 @@ export default function Home() {
                     key={`${log.time}-${i}`}
                     className="flex gap-4 text-zinc-400 border-b border-zinc-800 pb-2 last:border-0"
                   >
-                    <span className={`${log.type === 'WARN' ? 'text-yellow-400' : 'text-blue-400'} w-10 font-bold`}>
+                    <span className={`${log.type === 'WARN' ? 'text-yellow-400' : 'text-blue-400'} w-10 font-black`}>
                       {log.type}
                     </span>
                     <span className="text-zinc-600 whitespace-nowrap">[{log.time}]</span>
@@ -292,11 +282,11 @@ export default function Home() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.4 }}
             className="md:col-span-1 bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col"
           >
             <div className="flex items-center justify-between mb-4">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Cluster Health</p>
+              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Cluster Health</p>
               <Activity size={14} className="text-zinc-600" />
             </div>
             <div className="space-y-3">
@@ -311,13 +301,13 @@ export default function Home() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${
-                        node.status === 'synced' ? 'bg-green-500' : 
-                        node.status === 'syncing' ? 'bg-yellow-500 animate-pulse' : 
-                        'bg-red-500'
+                        node.status === 'synced' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 
+                        node.status === 'syncing' ? 'bg-yellow-500 animate-pulse shadow-[0_0_8px_rgba(234,179,8,0.4)]' : 
+                        'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
                       }`} />
-                      <span className="text-[10px] font-bold truncate max-w-[80px]">{node.name}</span>
+                      <span className="text-[10px] font-black truncate max-w-[80px]">{node.name}</span>
                     </div>
-                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
+                    <span className={`text-[8px] px-1.5 py-0.5 rounded-full font-black uppercase ${
                       node.status === 'synced' ? 'bg-green-500/10 text-green-500' : 
                       node.status === 'syncing' ? 'bg-yellow-500/10 text-yellow-500' : 
                       'bg-red-500/10 text-red-500'
@@ -335,7 +325,7 @@ export default function Home() {
                         transition={{ duration: 0.2 }}
                         className="overflow-hidden"
                       >
-                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800 mt-1">
+                        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800 mt-2">
                           <div className="flex flex-col gap-1">
                             <span className="text-[7px] text-zinc-500 uppercase font-black">CPU Usage</span>
                             <div className="flex items-center gap-2">
@@ -362,17 +352,30 @@ export default function Home() {
                               <span className="text-[8px] font-mono whitespace-nowrap">{node.memory}GB</span>
                             </div>
                           </div>
-                          <div className="flex flex-col gap-1 col-span-2">
-                            <span className="text-[7px] text-zinc-500 uppercase font-black">Disk space</span>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[7px] text-zinc-500 uppercase font-black">Network I/O</span>
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
                                 <motion.div 
                                   initial={{ width: 0 }}
-                                  animate={{ width: `${(node.disk/2)*100}%` }}
-                                  className="h-full bg-zinc-500"
+                                  animate={{ width: `${Math.min((node.networkIO/1000)*100, 100)}%` }}
+                                  className="h-full bg-green-500"
                                 />
                               </div>
-                              <span className="text-[8px] font-mono whitespace-nowrap">{node.disk}TB / 2TB</span>
+                              <span className="text-[8px] font-mono whitespace-nowrap">{node.networkIO}MB/s</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[7px] text-zinc-500 uppercase font-black">Disk I/O</span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${Math.min((node.diskIO/500)*100, 100)}%` }}
+                                  className="h-full bg-yellow-500"
+                                />
+                              </div>
+                              <span className="text-[8px] font-mono whitespace-nowrap">{node.diskIO}MB/s</span>
                             </div>
                           </div>
                         </div>
@@ -382,39 +385,114 @@ export default function Home() {
 
                   <div className="flex justify-between items-center text-[8px] font-mono text-zinc-500 px-2 mt-1">
                     <span>Latency</span>
-                    <span className={node.status === 'error' ? 'text-red-500' : ''}>{node.latency}</span>
+                    <span className={node.status === 'error' ? 'text-red-500 font-bold' : ''}>{node.latency}</span>
                   </div>
                 </div>
               ))}
             </div>
           </motion.div>
 
-          {/* Throughput */}
+          {/* Historical Trends */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col justify-between"
+            transition={{ delay: 0.5 }}
+            className="md:col-span-3 bento-card p-5 rounded-xl bg-[#111111] border border-[#222222] hover:border-[#FF0420] transition-colors duration-300 flex flex-col"
           >
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-bold">Throughput</p>
-              <Layers size={14} className="text-zinc-600" />
-            </div>
-            <div>
-              <div className="flex justify-between items-end">
-                <h3 className="text-2xl md:text-3xl font-bold font-mono">14.2</h3>
-                <span className="text-xs font-mono text-[#FF0420] font-bold">TPS</span>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={14} className="text-zinc-600" />
+                <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-black">Historical Trends (Last 7h)</p>
               </div>
-              <p className="text-[9px] text-zinc-500 uppercase mt-1 font-bold">Peak 250 TPS</p>
+              <div className="flex gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">CPU</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                  <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">MEM</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  <span className="text-[8px] font-mono text-zinc-500 font-black uppercase">NET</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 min-h-[140px] w-full mt-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={historyData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#222222" vertical={false} />
+                  <XAxis 
+                    dataKey="time" 
+                    stroke="#555555" 
+                    fontSize={8} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    stroke="#555555" 
+                    fontSize={8} 
+                    tickLine={false} 
+                    axisLine={false} 
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#111111', 
+                      border: '1px solid #333333',
+                      fontSize: '10px',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    itemStyle={{ color: '#fff' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="cpu" 
+                    stroke="#3b82f6" 
+                    strokeWidth={2} 
+                    dot={false} 
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="mem" 
+                    stroke="#a855f7" 
+                    strokeWidth={2} 
+                    dot={false} 
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                   <Line 
+                    type="monotone" 
+                    dataKey="net" 
+                    stroke="#22c55e" 
+                    strokeWidth={2} 
+                    dot={false} 
+                    activeDot={{ r: 4, strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </motion.div>
 
         </main>
         
-        <footer className="mt-4 flex justify-center">
+        <footer className="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 px-2">
            <div className="flex items-center gap-2 px-4 py-2 bg-[#111111] border border-[#222222] rounded-full">
               <CheckCircle2 size={12} className="text-green-500" />
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-tight">Mainnet Cluster Verified</span>
+              <span className="text-[10px] text-zinc-400 font-black uppercase tracking-tight">Mainnet Cluster Verified</span>
+           </div>
+           <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <Database size={12} className="text-zinc-600" />
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">1.2 TB STORAGE</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Cpu size={12} className="text-zinc-600" />
+                <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">16 CORES ACTIVE</span>
+              </div>
            </div>
         </footer>
       </div>
