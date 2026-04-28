@@ -19,10 +19,35 @@ import {
 export default function Home() {
   const [isReady, setIsReady] = useState(false);
   const [blockHeight, setBlockHeight] = useState(114290512);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [nodes, setNodes] = useState([
-    { id: 'node-01', name: 'Optimism Mainnet 01', status: 'synced', latency: '12ms' },
-    { id: 'node-02', name: 'Optimism Mainnet 02', status: 'syncing', latency: '45ms' },
-    { id: 'node-03', name: 'Optimism Backup', status: 'error', latency: 'timeout' }
+    { 
+      id: 'node-01', 
+      name: 'Optimism Mainnet 01', 
+      status: 'synced', 
+      latency: '12ms',
+      cpu: 24,
+      memory: 18.4,
+      disk: 1.2
+    },
+    { 
+      id: 'node-02', 
+      name: 'Optimism Mainnet 02', 
+      status: 'syncing', 
+      latency: '45ms',
+      cpu: 58,
+      memory: 32.1,
+      disk: 0.9
+    },
+    { 
+      id: 'node-03', 
+      name: 'Optimism Backup', 
+      status: 'error', 
+      latency: 'timeout',
+      cpu: 0,
+      memory: 0.1,
+      disk: 1.5
+    }
   ]);
   const [logs, setLogs] = useState([
     { type: 'INFO', time: '12:04:22', msg: 'Advancing L2 head to block #114290512' },
@@ -276,7 +301,13 @@ export default function Home() {
             </div>
             <div className="space-y-3">
               {nodes.map((node) => (
-                <div key={node.id} className="flex flex-col gap-1">
+                <div 
+                  key={node.id} 
+                  className={`flex flex-col gap-2 p-2 rounded-lg transition-colors cursor-pointer ${
+                    selectedNodeId === node.id ? 'bg-[#1a1a1a] shadow-inner' : 'hover:bg-[#161616]'
+                  }`}
+                  onClick={() => setSelectedNodeId(selectedNodeId === node.id ? null : node.id)}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${
@@ -294,7 +325,62 @@ export default function Home() {
                       {node.status}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-[8px] font-mono text-zinc-500 px-4">
+                  
+                  <AnimatePresence>
+                    {selectedNodeId === node.id && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800 mt-1">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[7px] text-zinc-500 uppercase font-black">CPU Usage</span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${node.cpu}%` }}
+                                  className="h-full bg-blue-500"
+                                />
+                              </div>
+                              <span className="text-[8px] font-mono whitespace-nowrap">{node.cpu}%</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[7px] text-zinc-500 uppercase font-black">Memory</span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${(node.memory/64)*100}%` }}
+                                  className="h-full bg-purple-500"
+                                />
+                              </div>
+                              <span className="text-[8px] font-mono whitespace-nowrap">{node.memory}GB</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1 col-span-2">
+                            <span className="text-[7px] text-zinc-500 uppercase font-black">Disk space</span>
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${(node.disk/2)*100}%` }}
+                                  className="h-full bg-zinc-500"
+                                />
+                              </div>
+                              <span className="text-[8px] font-mono whitespace-nowrap">{node.disk}TB / 2TB</span>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="flex justify-between items-center text-[8px] font-mono text-zinc-500 px-2 mt-1">
                     <span>Latency</span>
                     <span className={node.status === 'error' ? 'text-red-500' : ''}>{node.latency}</span>
                   </div>
