@@ -470,9 +470,39 @@ export default function Home() {
                         </div>
                         <div className="flex flex-col gap-1">
                           <span className="text-[7px] font-black uppercase text-zinc-500 tracking-widest">Health</span>
-                          <div className="flex items-center gap-1.5 font-mono">
-                            <TrendingUp size={10} className="text-blue-500" />
-                            <span>{calculateHealthScore(node)}%</span>
+                          <div className="flex items-center gap-2">
+                            <div className="relative w-7 h-7 flex items-center justify-center">
+                              <svg className="w-full h-full -rotate-90">
+                                <circle
+                                  cx="14" cy="14" r="11"
+                                  fill="transparent"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  className="text-zinc-800"
+                                />
+                                <circle
+                                  cx="14" cy="14" r="11"
+                                  fill="transparent"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeDasharray={2 * Math.PI * 11}
+                                  strokeDashoffset={(2 * Math.PI * 11) - (calculateHealthScore(node) / 100) * (2 * Math.PI * 11)}
+                                  strokeLinecap="round"
+                                  className={`transition-all duration-1000 ${
+                                    calculateHealthScore(node) > 80 ? 'text-green-500' : 
+                                    calculateHealthScore(node) > 50 ? 'text-yellow-500' : 'text-red-500'
+                                  }`}
+                                />
+                              </svg>
+                              <span className="absolute text-[8px] font-black font-mono">{calculateHealthScore(node)}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-bold font-mono">{calculateHealthScore(node)}%</span>
+                              <div className="flex items-center gap-1">
+                                <TrendingUp size={8} className={calculateHealthScore(node) > 50 ? 'text-green-500' : 'text-red-500'} />
+                                <span className="text-[6px] text-zinc-500 uppercase font-black">Score</span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
